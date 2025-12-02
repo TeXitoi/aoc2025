@@ -1,10 +1,8 @@
-use aoc2025::*;
-
 fn main() -> anyhow::Result<()> {
     let mut cur: i32 = 50;
     let mut num_zero = 0;
     let mut num_pass_zero = 0;
-    for l in lines("data/example01.txt")? {
+    for l in std::fs::read_to_string("data/example01.txt")?.lines() {
         let incr = match l.chars().next() {
             Some('R') => 1,
             Some('L') => -1,

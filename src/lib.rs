@@ -1,6 +1,2 @@
-pub use std::fs::File;
-pub use std::io::{self, BufRead, Read};
-
-pub fn lines(file: &str) -> io::Result<Vec<String>> {
-    io::BufReader::new(File::open(file)?).lines().collect()
-}
+pub use std::fs::{File, read_to_string};
+pub use std::io::{self, prelude::*};

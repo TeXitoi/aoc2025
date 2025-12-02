@@ -15,8 +15,9 @@ Only a few well-known dependencies are used:
 * [anyhow](https://crates.io/crates/anyhow) for easy and simple error
   handling, in all the files.
 
-I have in the `lib.rs` file some trivial functions to limit the
-boilerplate. Nothing really complex or interesting.
+I have in the `lib.rs` some convenient `pub use std::…` allowing to
+just `use aoc2025::*;` during the developement of the solution. These
+import are then done explicitly when cleaning the code.
 
 # About my writing of these files
 
