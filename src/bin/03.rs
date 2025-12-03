@@ -1,24 +1,19 @@
-fn max_joltage(l: &[u8], num: usize) -> anyhow::Result<u64> {
-    anyhow::ensure!(l.len() >= num && l.iter().all(|&j| j < 10));
-    let mut sum = 0;
-    let mut fst = 0;
+fn jolts(mut l: &[u8], num: usize) -> u64 {
+    let mut res = 0;
     for i in (0..num).rev() {
-        let max = *l[fst..l.len() - i].iter().max().unwrap();
-        fst = l[fst..l.len() - i].iter().position(|i| *i == max).unwrap() + fst + 1;
-        sum = sum * 10 + u64::from(max);
+        let max = *l[..l.len() - i].iter().max().unwrap();
+        l = &l[l.iter().position(|&i| i == max).unwrap() + 1..];
+        res = res * 10 + u64::from(max);
     }
-    Ok(sum)
+    res
 }
 
 fn main() -> anyhow::Result<()> {
-    let mut sum2 = 0;
-    let mut sum12 = 0;
-    for l in std::fs::read_to_string("data/example03.txt")?.lines() {
-        let l: Vec<u8> = l.as_bytes().iter().map(|i| i - b'0').collect();
-        sum2 += max_joltage(&l, 2)?;
-        sum12 += max_joltage(&l, 12)?;
-    }
-    println!("Part1: {sum2}");
-    println!("Part2: {sum12}");
+    let lines: Vec<Vec<_>> = std::fs::read_to_string("data/example03.txt")?
+        .lines()
+        .map(|l| l.trim().as_bytes().iter().map(|i| i - b'0').collect())
+        .collect();
+    println!("Part1: {}", lines.iter().map(|l| jolts(l, 2)).sum::<u64>());
+    println!("Part2: {}", lines.iter().map(|l| jolts(l, 12)).sum::<u64>());
     Ok(())
 }
