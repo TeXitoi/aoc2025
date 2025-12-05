@@ -5,15 +5,11 @@ fn check(s: &[u8], len: usize) -> bool {
 fn main() -> anyhow::Result<()> {
     let mut sum1 = 0;
     let mut sum2 = 0;
-    for interval in std::fs::read_to_string("data/example02.txt")?.split(',') {
-        let v = interval
-            .split('-')
-            .map(|s| s.trim().parse())
-            .collect::<Result<Vec<u64>, _>>()?;
-        let &[start, end] = v.as_slice() else {
-            anyhow::bail!("bad interval {interval:?}")
+    for interval in std::fs::read_to_string("data/input02.txt")?.split(',') {
+        let Some((start, end)) = interval.split_once('-') else {
+            anyhow::bail!("bad line {interval:?}")
         };
-        for i in start..=end {
+        for i in start.parse::<u64>()?..=end.parse()? {
             let s = i.to_string().into_bytes();
             if check(&s, s.len() / 2) {
                 sum1 += i;
