@@ -1,5 +1,5 @@
 fn main() -> anyhow::Result<()> {
-    let raw_data = std::fs::read_to_string("data/input06.txt")?;
+    let raw_data = std::fs::read_to_string("data/example06.txt")?;
     let data: Vec<Vec<_>> = raw_data
         .lines()
         .map(|l| l.split(' ').filter(|s| !s.is_empty()).collect())
