@@ -48,10 +48,12 @@ fn main() -> anyhow::Result<()> {
     // basically https://en.wikipedia.org/wiki/Kruskal%27s_algorithm
     edges.sort_unstable();
     let mut disjoint_set = DisjointSet::new(boxes.len());
-    let mut last_junction = 0;
+    let mut num_union = 0;
     for (idx_edge, &(_, i, j)) in edges.iter().enumerate() {
-        if disjoint_set.union(i, j) {
-            last_junction = boxes[i].0 * boxes[j].0;
+        num_union += usize::from(disjoint_set.union(i, j));
+        if num_union == boxes.len() - 1 {
+            println!("Part2: {}", boxes[i].0 * boxes[j].0);
+            break;
         }
         if [10, 1000].contains(&(idx_edge + 1)) {
             let mut cardinals = vec![0; boxes.len()];
@@ -63,6 +65,5 @@ fn main() -> anyhow::Result<()> {
             println!("Part1: {}", cardinals[..3].iter().product::<u64>());
         }
     }
-    println!("Part2: {}", last_junction);
     Ok(())
 }
