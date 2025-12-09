@@ -1,22 +1,26 @@
 // see https://en.wikipedia.org/wiki/Disjoint-set_data_structure
-struct DisjointSet(Vec<usize>);
+struct DisjointSet {
+    parent: Vec<usize>,
+}
 impl DisjointSet {
     fn new(n: usize) -> Self {
-        Self((0..n).collect())
+        Self {
+            parent: (0..n).collect(),
+        }
     }
     fn find(&mut self, i: usize) -> usize {
-        if self.0[i] == i {
+        if self.parent[i] == i {
             i
         } else {
-            self.0[i] = self.find(self.0[i]);
-            self.0[i]
+            self.parent[i] = self.find(self.parent[i]);
+            self.parent[i]
         }
     }
     fn union(&mut self, i: usize, j: usize) -> bool {
-        let root_i = self.find(i);
-        let root_j = self.find(j);
-        self.0[root_j] = root_i;
-        root_i != root_j
+        let i = self.find(i);
+        let j = self.find(j);
+        self.parent[j] = i;
+        i != j
     }
 }
 
