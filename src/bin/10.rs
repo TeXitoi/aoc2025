@@ -36,17 +36,19 @@ impl Machine {
             joltages,
         })
     }
-    fn search(&self) -> Option<u32> {
-        let mut nodes = BTreeSet::from([(0, 0, vec![0; self.lights.len()])]);
-        let mut last = 0;
+    fn min_rem(&self, joltages: &[i32]) -> i32 {
+        self.joltages
+            .iter()
+            .zip(joltages)
+            .map(|(j1, j2)| j1 - j2)
+            .max()
+            .unwrap_or(0)
+    }
+    fn search(&self) -> Option<i32> {
+        let init_joltages = vec![0; self.lights.len()];
+        let mut nodes = BTreeSet::from([(-self.min_rem(&init_joltages), 0, init_joltages)]);
         let mut seen = BTreeSet::default();
-        while let Some((num, _, joltages)) = nodes.pop_first() {
-            if last != num {
-                last = num;
-                dbg!(num);
-                dbg!(nodes.len());
-                dbg!(seen.len());
-            }
+        while let Some((_, num, joltages)) = nodes.pop_last() {
             for button in &self.buttons {
                 let mut joltages = joltages.to_vec();
                 for &b in button {
@@ -57,7 +59,7 @@ impl Machine {
                     Some(false) => {}
                     None => {
                         if seen.insert(joltages.clone()) {
-                            nodes.insert((num + 1, -joltages.iter().sum::<i32>(), joltages));
+                            nodes.insert((-self.min_rem(&joltages) - num - 1, num + 1, joltages));
                         }
                     }
                 }
@@ -74,7 +76,7 @@ impl Machine {
             Some(false)
         }
     }
-    fn solve(&self) -> Option<u32> {
+    fn solve(&self) -> i32 {
         use good_lp::{Expression, ProblemVariables, Solution, SolverModel, variable};
         let mut problem = ProblemVariables::new();
         let variables: Vec<_> = self
@@ -96,7 +98,12 @@ impl Machine {
             );
         }
         let solution = problem.solve().unwrap();
-        Some(solution.eval(objective).round() as u32)
+        let pushes: Vec<_> = variables
+            .iter()
+            .map(|&v| solution.eval(v).round() as u32)
+            .collect();
+        //println!("pushes: {pushes:?}");
+        solution.eval(objective).round() as i32
     }
 }
 fn main() -> anyhow::Result<()> {
@@ -104,7 +111,15 @@ fn main() -> anyhow::Result<()> {
         .lines()
         .map(|l| Machine::new(l))
         .collect::<anyhow::Result<Vec<_>>>()?;
-    let num: u32 = machines.iter_mut().map(|m| dbg!(m.solve().unwrap())).sum();
+    machines.sort_unstable_by_key(|m| m.buttons.len());
+    let num: i32 = machines
+        .iter_mut()
+        .map(|m| {
+            let num = m.search().unwrap();
+            assert_eq!(num, m.solve());
+            dbg!(num)
+        })
+        .sum();
     println!("Part2: {num}");
     Ok(())
 }
