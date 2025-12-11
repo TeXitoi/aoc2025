@@ -36,17 +36,51 @@ impl Machine {
             joltages,
         })
     }
+    fn check_lights(&self, mut press: u32) -> bool {
+        let mut lights = vec![false; self.lights.len()];
+        for i in 0.. {
+            if press == 0 {
+                break;
+            } else if press & 1 == 1 {
+                for &j in &self.buttons[i] {
+                    lights[j] = !lights[j];
+                }
+            }
+            press >>= 1;
+        }
+        lights == self.lights
+    }
+    fn num_buttons(&self) -> Option<u32> {
+        (0..1 << self.buttons.len())
+            .filter(|&bs| self.check_lights(bs))
+            .map(u32::count_ones)
+            .min()
+    }
     fn min_rem(&self, joltages: &[i32]) -> i32 {
-        self.joltages
-            .iter()
-            .zip(joltages)
-            .map(|(j1, j2)| j1 - j2)
-            .max()
-            .unwrap_or(0)
+        let mut slots = vec![true; self.joltages.len()];
+        let mut min_rem = 0;
+        while slots.iter().any(|&s| s) {
+            let (max_diff, i) = slots
+                .iter()
+                .enumerate()
+                .filter(|&(_, &s)| s)
+                .map(|(i, _)| (self.joltages[i] - joltages[i], i))
+                .max()
+                .unwrap();
+            min_rem += max_diff;
+            for b in &self.buttons {
+                if b.contains(&i) {
+                    for &j in b {
+                        slots[j] = false;
+                    }
+                }
+            }
+        }
+        min_rem
     }
     fn search(&self) -> Option<i32> {
         let init_joltages = vec![0; self.lights.len()];
-        let mut nodes = BTreeSet::from([(-self.min_rem(&init_joltages), 0, init_joltages)]);
+        let mut nodes = BTreeSet::from([(-dbg!(self.min_rem(&init_joltages)), 0, init_joltages)]);
         let mut seen = BTreeSet::default();
         while let Some((_, num, joltages)) = nodes.pop_last() {
             for button in &self.buttons {
@@ -98,22 +132,23 @@ impl Machine {
             );
         }
         let solution = problem.solve().unwrap();
-        let pushes: Vec<_> = variables
-            .iter()
-            .map(|&v| solution.eval(v).round() as u32)
-            .collect();
-        //println!("pushes: {pushes:?}");
         solution.eval(objective).round() as i32
     }
 }
 fn main() -> anyhow::Result<()> {
     let mut machines = std::fs::read_to_string("data/input10.txt")?
         .lines()
-        .map(|l| Machine::new(l))
+        .map(Machine::new)
         .collect::<anyhow::Result<Vec<_>>>()?;
     machines.sort_unstable_by_key(|m| m.buttons.len());
+
+    let num_buttons = machines.iter().filter_map(|m| m.num_buttons()).sum::<u32>();
+    println!("Part1: {num_buttons}");
+
+    //let num: i32 = machines.iter().map(|m| dbg!(m.solve())).sum();
+    //println!("Part2: {num}");
     let num: i32 = machines
-        .iter_mut()
+        .iter()
         .map(|m| {
             let num = m.search().unwrap();
             assert_eq!(num, m.solve());
