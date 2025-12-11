@@ -78,28 +78,45 @@ impl Machine {
         }
         min_rem
     }
-    fn search(&self) -> Option<i32> {
-        let init_joltages = vec![0; self.lights.len()];
-        let mut nodes = BTreeSet::from([(-dbg!(self.min_rem(&init_joltages)), 0, init_joltages)]);
-        let mut seen = BTreeSet::default();
-        while let Some((_, num, joltages)) = nodes.pop_last() {
-            for button in &self.buttons {
-                let mut joltages = joltages.to_vec();
-                for &b in button {
-                    joltages[b] += 1;
+    fn search(&self) -> i32 {
+        let mut buttons = self.buttons.clone();
+        buttons.sort_unstable();
+        let mut best = i32::MAX;
+        let mut cur = BTreeSet::default();
+        let mut next = BTreeSet::from([(0, vec![0; self.joltages.len()])]);
+        for button in &buttons {
+            (cur, next) = (next, cur);
+            next.clear();
+            for &(num, ref joltages) in &cur {
+                if joltages[..button[0]]
+                    .iter()
+                    .enumerate()
+                    .any(|(i, &j)| self.joltages[i] != j)
+                {
+                    continue;
                 }
-                match self.check_joltages(&joltages) {
-                    Some(true) => return Some(num + 1),
-                    Some(false) => {}
-                    None => {
-                        if seen.insert(joltages.clone()) {
-                            nodes.insert((-self.min_rem(&joltages) - num - 1, num + 1, joltages));
+                for i in 0.. {
+                    let num = num + i;
+                    let mut new_joltages = joltages.clone();
+                    for &j in button {
+                        new_joltages[j] += i;
+                    }
+                    match self.check_joltages(&new_joltages) {
+                        Some(true) => {
+                            best = best.min(num);
+                            //dbg!(best);
+                            break;
                         }
+                        Some(false) => break,
+                        None if num + self.min_rem(&new_joltages) < best => {
+                            next.insert((num, new_joltages));
+                        }
+                        None => {}
                     }
                 }
             }
         }
-        None
+        best
     }
     fn check_joltages(&self, joltages: &[i32]) -> Option<bool> {
         if joltages == self.joltages {
@@ -150,7 +167,7 @@ fn main() -> anyhow::Result<()> {
     let num: i32 = machines
         .iter()
         .map(|m| {
-            let num = m.search().unwrap();
+            let num = m.search();
             assert_eq!(num, m.solve());
             dbg!(num)
         })
