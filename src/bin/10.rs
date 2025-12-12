@@ -1,12 +1,67 @@
-use std::collections::BTreeMap;
+use std::collections::BTreeMap as Map;
 use std::io::Write;
+
+type Joltage = u8;
+type Joltages = MuVec<Joltage>;
+
+#[derive(Default, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+struct MuVec<T: Default> {
+    data: [T; 10],
+    len: u8,
+}
+impl<T: Default> MuVec<T> {
+    pub fn push(&mut self, e: T) {
+        assert!(self.len < 10);
+        self.data[usize::from(self.len)] = e;
+        self.len += 1;
+    }
+    pub fn as_slice(&self) -> &[T] {
+        &self.data[..self.len as usize]
+    }
+    pub fn as_mut_slice(&mut self) -> &mut [T] {
+        &mut self.data[..self.len as usize]
+    }
+}
+impl<T: Default> std::ops::Deref for MuVec<T> {
+    type Target = [T];
+    fn deref(&self) -> &Self::Target {
+        self.as_slice()
+    }
+}
+impl<T: Default> std::ops::DerefMut for MuVec<T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        self.as_mut_slice()
+    }
+}
+impl<T: std::fmt::Debug + Default> std::fmt::Debug for MuVec<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.as_slice().fmt(f)
+    }
+}
+impl<T: Default> std::iter::FromIterator<T> for MuVec<T> {
+    fn from_iter<I>(iter: I) -> Self
+    where
+        I: IntoIterator<Item = T>,
+    {
+        let mut res = Self::default();
+        for j in iter {
+            res.push(j);
+        }
+        res
+    }
+}
+impl<T: Default, const N: usize> From<[T; N]> for MuVec<T> {
+    fn from(v: [T; N]) -> Self {
+        v.into_iter().collect()
+    }
+}
 
 #[derive(Debug)]
 struct Machine {
     line: String,
     lights: Vec<bool>,
     buttons: Vec<Vec<usize>>,
-    joltages: Vec<i32>,
+    joltages: Joltages,
 }
 impl Machine {
     fn new(s: &str) -> anyhow::Result<Self> {
@@ -31,7 +86,7 @@ impl Machine {
         let joltages = js[1..js.len() - 1]
             .split(',')
             .map(|l| l.parse())
-            .collect::<Result<Vec<_>, _>>()?;
+            .collect::<Result<Joltages, _>>()?;
         Ok(Self {
             line: s.into(),
             lights,
@@ -59,15 +114,15 @@ impl Machine {
             .map(u32::count_ones)
             .min()
     }
-    fn min_rem(&self, joltages: &[i32]) -> i32 {
-        let mut slots = vec![true; self.joltages.len()];
+    fn min_rem(&self, joltages: &[Joltage]) -> u16 {
+        let mut slots: MuVec<_> = self.joltages.iter().map(|_| true).collect();
         let mut min_rem = 0;
         while slots.iter().any(|&s| s) {
             let (max_diff, i) = slots
                 .iter()
                 .enumerate()
                 .filter(|&(_, &s)| s)
-                .map(|(i, _)| (self.joltages[i] - joltages[i], i))
+                .map(|(i, _)| (u16::from(self.joltages[i]) - u16::from(joltages[i]), i))
                 .max()
                 .unwrap();
             min_rem += max_diff;
@@ -81,10 +136,27 @@ impl Machine {
         }
         min_rem
     }
+    fn make_permu(&self) -> Vec<usize> {
+        let mut buttons = self.buttons.clone();
+        let mut permu = vec![];
+        while !buttons.is_empty() {
+            let (_, smallest_j) = (0..self.joltages.len())
+                .map(|i| (buttons.iter().filter(|b| b.contains(&i)).count(), i))
+                .filter(|&(n, _)| n != 0)
+                .min()
+                .unwrap();
+            permu.push(smallest_j);
+            buttons.retain(|b| !b.contains(&smallest_j));
+        }
+        for i in 0..self.joltages.len() {
+            if !permu.contains(&i) {
+                permu.push(i);
+            }
+        }
+        permu
+    }
     fn rewrite(&self) -> Self {
-        let mut permu: Vec<_> = (0..self.joltages.len()).collect();
-        permu.sort_unstable_by_key(|i| self.buttons.iter().filter(|b| b.contains(i)).count());
-        //permu.sort_unstable_by_key(|&i| self.joltages[i]);
+        let permu = self.make_permu();
         let lights = permu.iter().map(|&i| self.lights[i]).collect();
         let joltages = permu.iter().map(|&i| self.joltages[i]).collect();
         let mut buttons: Vec<Vec<_>> = self
@@ -106,19 +178,19 @@ impl Machine {
             joltages,
         }
     }
-    fn search(&self) -> i32 {
+    fn search(&self) -> u16 {
         let mach = self.rewrite();
         dbg!(&mach.line);
-        let mut best = i32::MAX;
-        let mut cur = BTreeMap::default();
-        let mut next = BTreeMap::from([(vec![0; mach.joltages.len()], 0)]);
+        let mut best = u16::MAX;
+        let mut cur = Map::default();
+        let mut next = Map::from([(vec![0; mach.joltages.len()], 0)]);
         for (button_idx, button) in mach.buttons.iter().enumerate() {
             print!(".");
             std::io::stdout().flush().unwrap();
             (cur, next) = (next, cur);
             for (joltages, num) in std::mem::replace(&mut cur, Default::default()) {
                 for i in 0.. {
-                    let num = num + i;
+                    let num = num + u16::from(i);
                     let mut new_joltages = joltages.clone();
                     for &j in button {
                         new_joltages[j] += i;
@@ -126,7 +198,7 @@ impl Machine {
                     match mach.check_joltages(&new_joltages) {
                         Some(true) => {
                             best = best.min(num);
-                            //dbg!(best);
+                            dbg!(best);
                             break;
                         }
                         Some(false) => break,
@@ -144,7 +216,7 @@ impl Machine {
         println!("");
         best
     }
-    fn check_until_button(&self, button_idx: usize, joltages: &[i32]) -> bool {
+    fn check_until_button(&self, button_idx: usize, joltages: &[Joltage]) -> bool {
         if button_idx >= self.buttons.len() {
             return false;
         }
@@ -153,8 +225,8 @@ impl Machine {
             .enumerate()
             .all(|(i, &j)| self.joltages[i] == j)
     }
-    fn check_joltages(&self, joltages: &[i32]) -> Option<bool> {
-        if joltages == self.joltages {
+    fn check_joltages(&self, joltages: &[Joltage]) -> Option<bool> {
+        if *joltages == *self.joltages {
             Some(true)
         } else if self.joltages.iter().zip(joltages).all(|(r, cur)| cur <= r) {
             None
@@ -162,7 +234,7 @@ impl Machine {
             Some(false)
         }
     }
-    fn solve(&self) -> i32 {
+    fn solve(&self) -> u16 {
         use good_lp::{Expression, ProblemVariables, Solution, SolverModel, variable};
         let mut problem = ProblemVariables::new();
         let variables: Vec<_> = self
@@ -171,7 +243,7 @@ impl Machine {
             .map(|_| problem.add(variable().integer().min(0)))
             .collect();
         let objective = variables.iter().sum::<Expression>();
-        let mut problem = problem.minimise(&objective).using(good_lp::highs);
+        let mut problem = problem.minimise(&objective).using(good_lp::microlp);
         for (i, &target) in self.joltages.iter().enumerate() {
             problem.add_constraint(
                 self.buttons
@@ -184,7 +256,7 @@ impl Machine {
             );
         }
         let solution = problem.solve().unwrap();
-        solution.eval(objective).round() as i32
+        solution.eval(objective).round() as u16
     }
 }
 fn main() -> anyhow::Result<()> {
@@ -197,17 +269,19 @@ fn main() -> anyhow::Result<()> {
     let num_buttons = machines.iter().filter_map(|m| m.num_buttons()).sum::<u32>();
     println!("Part1: {num_buttons}");
 
-    //let num: i32 = machines.iter().map(|m| dbg!(m.solve())).sum();
-    //println!("Part2: {num}");
+    let num: u16 = machines.iter().map(|m| m.solve()).sum();
+    println!("Part2: {num}");
     dbg!(machines.len());
-    let num: i32 = machines
+    let num: u16 = machines
         .iter()
+        //.rev()
         .enumerate()
         .map(|(i, m)| {
             dbg!(i);
-            let num = dbg!(m.search());
-            assert_eq!(num, m.solve());
-            num
+            let num1 = dbg!(m.solve());
+            let num2 = dbg!(m.search());
+            assert_eq!(num1, num2);
+            num2
         })
         .sum();
     println!("Part2: {num}");

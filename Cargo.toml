@@ -5,4 +5,7 @@ edition = "2024"
 
 [dependencies]
 anyhow = "1.0.100"
-good_lp = { version = "1.14.2", default-features = false, features = ["highs"] }
+good_lp = { version = "1.14.2", default-features = false, features = ["microlp"] }
+
+[profile.release]
+overflow-checks = true
