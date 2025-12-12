@@ -1,7 +1,9 @@
-use std::collections::BTreeSet;
+use std::collections::BTreeMap;
+use std::io::Write;
 
 #[derive(Debug)]
 struct Machine {
+    line: String,
     lights: Vec<bool>,
     buttons: Vec<Vec<usize>>,
     joltages: Vec<i32>,
@@ -31,6 +33,7 @@ impl Machine {
             .map(|l| l.parse())
             .collect::<Result<Vec<_>, _>>()?;
         Ok(Self {
+            line: s.into(),
             lights,
             buttons,
             joltages,
@@ -78,45 +81,77 @@ impl Machine {
         }
         min_rem
     }
-    fn search(&self) -> i32 {
-        let mut buttons = self.buttons.clone();
+    fn rewrite(&self) -> Self {
+        let mut permu: Vec<_> = (0..self.joltages.len()).collect();
+        permu.sort_unstable_by_key(|i| self.buttons.iter().filter(|b| b.contains(i)).count());
+        //permu.sort_unstable_by_key(|&i| self.joltages[i]);
+        let lights = permu.iter().map(|&i| self.lights[i]).collect();
+        let joltages = permu.iter().map(|&i| self.joltages[i]).collect();
+        let mut buttons: Vec<Vec<_>> = self
+            .buttons
+            .iter()
+            .map(|b| {
+                b.iter()
+                    .map(|&i| permu.iter().position(|&j| j == i).unwrap())
+                    .collect()
+            })
+            .collect();
+        buttons.iter_mut().for_each(|b| b.sort_unstable());
         buttons.sort_unstable();
+        let line = format!("{:?} {:?}", buttons, joltages);
+        Self {
+            line,
+            lights,
+            buttons,
+            joltages,
+        }
+    }
+    fn search(&self) -> i32 {
+        let mach = self.rewrite();
+        dbg!(&mach.line);
         let mut best = i32::MAX;
-        let mut cur = BTreeSet::default();
-        let mut next = BTreeSet::from([(0, vec![0; self.joltages.len()])]);
-        for button in &buttons {
+        let mut cur = BTreeMap::default();
+        let mut next = BTreeMap::from([(vec![0; mach.joltages.len()], 0)]);
+        for (button_idx, button) in mach.buttons.iter().enumerate() {
+            print!(".");
+            std::io::stdout().flush().unwrap();
             (cur, next) = (next, cur);
-            next.clear();
-            for &(num, ref joltages) in &cur {
-                if joltages[..button[0]]
-                    .iter()
-                    .enumerate()
-                    .any(|(i, &j)| self.joltages[i] != j)
-                {
-                    continue;
-                }
+            for (joltages, num) in std::mem::replace(&mut cur, Default::default()) {
                 for i in 0.. {
                     let num = num + i;
                     let mut new_joltages = joltages.clone();
                     for &j in button {
                         new_joltages[j] += i;
                     }
-                    match self.check_joltages(&new_joltages) {
+                    match mach.check_joltages(&new_joltages) {
                         Some(true) => {
                             best = best.min(num);
                             //dbg!(best);
                             break;
                         }
                         Some(false) => break,
-                        None if num + self.min_rem(&new_joltages) < best => {
-                            next.insert((num, new_joltages));
+                        None if num + mach.min_rem(&new_joltages) < best
+                            && mach.check_until_button(button_idx + 1, &new_joltages) =>
+                        {
+                            let n = next.entry(new_joltages).or_insert(num);
+                            *n = num.min(*n);
                         }
                         None => {}
                     }
                 }
             }
         }
+        println!("");
         best
+    }
+    fn check_until_button(&self, button_idx: usize, joltages: &[i32]) -> bool {
+        if button_idx >= self.buttons.len() {
+            return false;
+        }
+        joltages[..self.buttons[button_idx][0]]
+            .iter()
+            .enumerate()
+            .all(|(i, &j)| self.joltages[i] == j)
     }
     fn check_joltages(&self, joltages: &[i32]) -> Option<bool> {
         if joltages == self.joltages {
@@ -164,12 +199,15 @@ fn main() -> anyhow::Result<()> {
 
     //let num: i32 = machines.iter().map(|m| dbg!(m.solve())).sum();
     //println!("Part2: {num}");
+    dbg!(machines.len());
     let num: i32 = machines
         .iter()
-        .map(|m| {
-            let num = m.search();
+        .enumerate()
+        .map(|(i, m)| {
+            dbg!(i);
+            let num = dbg!(m.search());
             assert_eq!(num, m.solve());
-            dbg!(num)
+            num
         })
         .sum();
     println!("Part2: {num}");
