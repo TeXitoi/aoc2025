@@ -11,13 +11,11 @@ Goal is readable, simple and mostly clean.
 Each day is solved in it’s dedicated file in the [src/bin](src/bin/)
 directory.
 
-Only a few well-known dependencies are used:
+Only a few dependencies are used:
 * [anyhow](https://crates.io/crates/anyhow) for easy and simple error
   handling, in all the files.
-
-I have in the `lib.rs` some convenient `pub use std::…` allowing to
-just `use aoc2025::*;` during the developement of the solution. These
-import are then done explicitly when cleaning the code.
+* [microlp](https://crates.io/crates/microlp), a simple MILP solver in
+  pure rust, to solve day 10 part 2.
 
 # About my writing of these files
 
