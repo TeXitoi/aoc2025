@@ -26,13 +26,13 @@ impl Problem {
     fn has_trivial_solution(&self) -> bool {
         self.num_by_present.iter().sum::<usize>() <= (self.height / 3) * (self.width / 3)
     }
-    fn is_trivially_unfeasible(&self, presents: &[Present]) -> bool {
-        self.height * self.width
-            < presents
-                .iter()
-                .zip(&self.num_by_present)
-                .map(|(p, &n)| p.area() * n)
-                .sum()
+    fn is_unfeasible(&self, presents: &[Present]) -> bool {
+        let present_area = presents
+            .iter()
+            .zip(&self.num_by_present)
+            .map(|(p, &n)| p.area() * n)
+            .sum();
+        self.height * self.width < present_area
     }
 }
 
@@ -69,11 +69,10 @@ fn main() -> anyhow::Result<()> {
         .map(|b| b.parse())
         .collect::<Result<Vec<Present>, _>>()?;
     let lower = problems.iter().filter(|p| p.has_trivial_solution()).count();
-    let upper = problems.len()
-        - problems
-            .iter()
-            .filter(|p| p.is_trivially_unfeasible(&presents))
-            .count();
+    let upper = problems
+        .iter()
+        .filter(|p| !p.is_unfeasible(&presents))
+        .count();
     print!("Part1 in [{lower}, {upper}]");
     Ok(())
 }
