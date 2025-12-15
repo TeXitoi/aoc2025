@@ -140,9 +140,19 @@ impl Machine {
         let mut buttons = self.buttons.clone();
         let mut permu = vec![];
         while !buttons.is_empty() {
-            let (_, smallest_j) = (0..self.joltages.len())
-                .map(|i| (buttons.iter().filter(|b| b.contains(&i)).count(), i))
-                .filter(|&(n, _)| n != 0)
+            let (_, _, smallest_j) = (0..self.joltages.len())
+                .map(|i| {
+                    (
+                        buttons.iter().filter(|b| b.contains(&i)).count(),
+                        -(buttons
+                            .iter()
+                            .filter(|b| b.contains(&i))
+                            .map(|b| b.len() as isize)
+                            .sum::<isize>()),
+                        i,
+                    )
+                })
+                .filter(|&(n, _, _)| n != 0)
                 .min()
                 .unwrap();
             permu.push(smallest_j);
@@ -185,7 +195,7 @@ impl Machine {
         let mut cur = Map::default();
         let mut next = Map::from([(vec![0; mach.joltages.len()], 0)]);
         for (button_idx, button) in mach.buttons.iter().enumerate() {
-            print!(".");
+            print!("{}.", next.len());
             std::io::stdout().flush().unwrap();
             (cur, next) = (next, cur);
             for (joltages, num) in std::mem::replace(&mut cur, Default::default()) {
@@ -198,7 +208,7 @@ impl Machine {
                     match mach.check_joltages(&new_joltages) {
                         Some(true) => {
                             best = best.min(num);
-                            dbg!(best);
+                            //dbg!(best);
                             break;
                         }
                         Some(false) => break,
@@ -235,28 +245,26 @@ impl Machine {
         }
     }
     fn solve(&self) -> u16 {
-        use good_lp::{Expression, ProblemVariables, Solution, SolverModel, variable};
-        let mut problem = ProblemVariables::new();
+        use microlp::{ComparisonOp::Eq, OptimizationDirection, Problem};
+        let mut problem = Problem::new(OptimizationDirection::Minimize);
         let variables: Vec<_> = self
             .buttons
             .iter()
-            .map(|_| problem.add(variable().integer().min(0)))
+            .map(|_| problem.add_integer_var(1., (0, i32::MAX)))
             .collect();
-        let objective = variables.iter().sum::<Expression>();
-        let mut problem = problem.minimise(&objective).using(good_lp::microlp);
         for (i, &target) in self.joltages.iter().enumerate() {
             problem.add_constraint(
                 self.buttons
                     .iter()
-                    .enumerate()
-                    .filter(|(_, b)| b.contains(&i))
-                    .map(|(i, _)| variables[i])
-                    .sum::<Expression>()
-                    .eq(target),
+                    .zip(&variables)
+                    .filter(|(b, _)| b.contains(&i))
+                    .map(|(_, &v)| (v, 1.)),
+                Eq,
+                f64::from(target),
             );
         }
         let solution = problem.solve().unwrap();
-        solution.eval(objective).round() as u16
+        solution.objective().round() as u16
     }
 }
 fn main() -> anyhow::Result<()> {
@@ -274,7 +282,7 @@ fn main() -> anyhow::Result<()> {
     dbg!(machines.len());
     let num: u16 = machines
         .iter()
-        //.rev()
+        .rev()
         .enumerate()
         .map(|(i, m)| {
             dbg!(i);
