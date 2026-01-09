@@ -1,4 +1,5 @@
 type Coord = (i64, i64);
+
 #[derive(Copy, Clone)]
 struct Rect {
     min_x: i64,
@@ -25,6 +26,7 @@ impl Rect {
         (self.max_x - self.min_x + 1) * (self.max_y - self.min_y + 1)
     }
 }
+
 fn main() -> anyhow::Result<()> {
     let coords = std::fs::read_to_string("data/example09.txt")?
         .lines()

@@ -7,7 +7,6 @@ fn jolts(mut l: &[u8], num: usize) -> u64 {
     }
     res
 }
-
 fn main() -> anyhow::Result<()> {
     let lines: Vec<Vec<_>> = std::fs::read_to_string("data/example03.txt")?
         .lines()

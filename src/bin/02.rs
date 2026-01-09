@@ -1,11 +1,10 @@
 fn check(s: &[u8], len: usize) -> bool {
     s.len().is_multiple_of(len) && s[len..].chunks(len).all(|n| n == &s[..len])
 }
-
 fn main() -> anyhow::Result<()> {
     let mut sum1 = 0;
     let mut sum2 = 0;
-    for interval in std::fs::read_to_string("data/input02.txt")?.split(',') {
+    for interval in std::fs::read_to_string("data/example02.txt")?.split(',') {
         let Some((start, end)) = interval.split_once('-') else {
             anyhow::bail!("bad line {interval:?}")
         };

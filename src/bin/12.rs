@@ -56,7 +56,7 @@ impl std::str::FromStr for Present {
 }
 
 fn main() -> anyhow::Result<()> {
-    let data = std::fs::read_to_string("data/input12.txt")?;
+    let data = std::fs::read_to_string("data/example12.txt")?;
     let blocks: Vec<_> = data.split("\n\n").collect();
     let problems = blocks
         .last()
@@ -73,6 +73,6 @@ fn main() -> anyhow::Result<()> {
         .iter()
         .filter(|p| !p.is_unfeasible(&presents))
         .count();
-    print!("Part1 in [{lower}, {upper}]");
+    println!("Part1 in [{lower}, {upper}]");
     Ok(())
 }

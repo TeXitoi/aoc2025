@@ -1,5 +1,5 @@
 fn main() -> anyhow::Result<()> {
-    let data = std::fs::read_to_string("data/input05.txt")?;
+    let data = std::fs::read_to_string("data/example05.txt")?;
     let mut lines = data.lines();
     let mut ranges = lines
         .by_ref()

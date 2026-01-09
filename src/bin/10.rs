@@ -75,8 +75,9 @@ impl Machine {
         problem.solve().unwrap().objective().round() as u16
     }
 }
+
 fn main() -> anyhow::Result<()> {
-    let machines = std::fs::read_to_string("data/input10.txt")?
+    let machines = std::fs::read_to_string("data/example10.txt")?
         .lines()
         .map(Machine::new)
         .collect::<anyhow::Result<Vec<_>>>()?;

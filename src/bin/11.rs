@@ -12,7 +12,6 @@ fn dfs<'a>(from: &'a str, num_paths: &mut NumPaths<'a>, edges: &Edges<'a>) {
         *num_paths.get_mut(from).unwrap() += num_paths[to];
     }
 }
-
 fn num_paths<'a>(from: &'a str, tos: impl Into<NumPaths<'a>>, edges: &Edges<'a>) -> u64 {
     let mut num_paths = tos.into();
     dfs(from, &mut num_paths, edges);
